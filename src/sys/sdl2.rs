@@ -6,6 +6,7 @@ use sdl2::{
     rect::Rect,
     Sdl,
 };
+use imgui::im_str;
 
 use crate::{
     gfx::{
@@ -91,6 +92,14 @@ impl Sys for Sdl2Sys {
         const KEYPRESS_COOLDOWN_TICKS: usize = 1;
         let mut keypress_cooldown = KEYPRESS_COOLDOWN_TICKS;
 
+        // GUI
+        let mut imgui = imgui::Context::create();
+        imgui.set_ini_filename(None);
+        let mut imgui_sdl2 = imgui_sdl2::ImguiSdl2::new(&mut imgui, self.renderer.window());
+        let imgui_renderer = imgui_opengl_renderer::Renderer::new(&mut imgui, |s| {
+            self.sdl_context.video().unwrap().gl_get_proc_address(s) as _
+        });
+
         'run: loop {
             // Update input
             // TODO keep the key released events in a separate input state, so
@@ -99,6 +108,11 @@ impl Sys for Sdl2Sys {
             // TODO use wait_event_timeout() or wait_timeout_iter() to process
             // events in real-time while maintaining game cadence.
             for event in sdl_events.poll_iter() {
+                imgui_sdl2.handle_event(&mut imgui, &event);
+                if imgui_sdl2.ignore_event(&event) {
+                    continue;
+                }
+
                 match event {
                     Event::Quit { .. } => break 'run,
                     Event::Window {
@@ -219,7 +233,32 @@ impl Sys for Sdl2Sys {
                 sdl2::rect::Rect::new((viewport.width() - w) as i32 / 2, 0, w, h)
             };
 
+            // Prepare UI
+            imgui_sdl2.prepare_frame(
+                imgui.io_mut(),
+                self.renderer.window(),
+                &sdl_events.mouse_state(),
+            );
+            // TODO replace with actual time
+            let io = imgui.io_mut();
+            io.delta_time = DURATION_PER_TICK.as_secs_f32();
+            io.font_global_scale = 2.0;
+            let ui = imgui.frame();
+
+            imgui::Window::new(im_str!("Test window"))
+                .size([300.0, 110.0], imgui::Condition::FirstUseEver)
+                .build(&ui, || {
+                    ui.text(im_str!("Hello there!"));
+            });
+
+            ui.show_demo_window(&mut true);
+
             self.renderer.blit_game(&viewport_dst);
+
+            // Render UI on top
+            imgui_sdl2.prepare_render(&ui, self.renderer.window());
+            imgui_renderer.render(ui);
+
             self.renderer.present();
         }
     }

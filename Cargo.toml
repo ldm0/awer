@@ -7,7 +7,7 @@ authors = ["Alexandre Courbot <gnurou@gmail.com>"]
 
 [features]
 default = ["sdl2-sys"]
-sdl2-sys = ["sdl2", "gl"]
+sdl2-sys = ["sdl2", "gl", "imgui", "imgui-sdl2", "imgui-opengl-renderer"]
 
 [dependencies]
 log = "0.4"
@@ -19,3 +19,6 @@ anyhow = "1.0"
 # SDL2 dependencies
 sdl2 = { version = "0.34", optional = true, features = ["unsafe_textures"] }
 gl = { version = "0.14", optional = true }
+imgui = { version = "0.7", optional = true }
+imgui-sdl2 = { version = "0.14", optional = true }
+imgui-opengl-renderer = { version = "0.11", optional = true }
